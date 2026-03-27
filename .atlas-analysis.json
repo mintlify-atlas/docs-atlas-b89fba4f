@@ -1,0 +1,58 @@
+{
+  "projectType": "general",
+  "projectName": "DIY Gaming Console",
+  "projectDescription": "An open-source, pocket-sized gaming console built on the ESP32-C3 with a 1.3\" OLED display, running Snake, Pong, Dodge, and a DOOM-style micro FPS.",
+  "theme": "palm",
+  "primaryColor": "#2ECC71",
+  "lightColor": "#F0FFF4",
+  "darkColor": "#1A1A1A",
+  "navigation": {
+    "groups": [
+      {
+        "group": "Get Started",
+        "pages": ["introduction", "quickstart"]
+      },
+      {
+        "group": "Hardware",
+        "pages": ["hardware/components", "hardware/wiring"]
+      },
+      {
+        "group": "Firmware",
+        "pages": ["firmware/setup", "firmware/architecture"]
+      },
+      {
+        "group": "Games",
+        "pages": ["games/overview", "games/controls"]
+      },
+      {
+        "group": "Contributing",
+        "pages": ["contributing/roadmap", "contributing/customizing"]
+      }
+    ]
+  },
+  "keyFeatures": [
+    "ESP32-C3 powered pocket gaming console",
+    "1.3-inch SH1106 OLED monochrome display",
+    "Single analog 5-key button module for input",
+    "Five built-in games: Snake, Pong, Dodge, Mini DOOM FPS, Battleship",
+    "DOOM-style raycasting renderer on minimal hardware",
+    "Clean, beginner-friendly C++ firmware using U8g2 library",
+    "Inspired by Nothing/CMF minimalist design language",
+    "Fully open-source with MIT license"
+  ],
+  "publicApiSurface": [
+    "readButton() — reads analog ADC input and returns Button enum (NONE, LEFT, UP, DOWN, RIGHT, RESET)",
+    "AppState enum — BOOT, MENU, SNAKE, PONG, DODGE, DOOM, BATTLESHIP",
+    "snakeReset() / snakeUpdate() / snakeDraw()",
+    "pongReset() / pongUpdate() / pongDraw()",
+    "dodgeReset() / dodgeUpdate() / dodgeDraw()",
+    "doomReset() / doomUpdate() / doomDraw()",
+    "Animation::flashBorder(int times)",
+    "Animation::drawSnakeSegment(int x, int y, bool head)",
+    "bootAnimation()",
+    "setup() / loop() — Arduino entry points",
+    "U8G2_SH1106_128X64 OLED driver via U8g2lib",
+    "BTN_ADC pin (GPIO 0) — analog button input",
+    "I2C SDA (GPIO 8) / SCL (GPIO 9) — OLED interface"
+  ]
+}

@@ -1,97 +1,52 @@
 ---
-title: "Introduction"
-description: "Welcome to the new home for your documentation"
+title: "DIY Gaming Console"
+description: "An open-source, pocket-sized gaming console built on the ESP32-C3 with a 1.3\" OLED display."
 ---
 
-## Setting up
+Build your own pocket-sized gaming console from scratch. The DIY Gaming Console runs four playable games — Snake, Pong, Dodge, and a DOOM-style micro FPS — on minimal hardware with clean, beginner-friendly firmware inspired by the Nothing/CMF design language.
 
-Get your documentation site up and running in minutes.
-
-<Card
-  title="Start here"
-  icon="rocket"
-  href="/quickstart"
-  horizontal
->
-  Follow our three step quickstart guide.
-</Card>
-
-## Make it yours
-
-Design a docs site that looks great and empowers your users.
-
-<Columns cols={2}>
-  <Card
-    title="Edit locally"
-    icon="pen-to-square"
-    href="/development"
-  >
-    Edit your docs locally and preview them in real time.
+<CardGroup cols={2}>
+  <Card title="Quick start" icon="rocket" href="/quickstart">
+    Build and flash your console in under an hour
   </Card>
-  <Card
-    title="Customize your site"
-    icon="palette"
-    href="/essentials/settings"
-  >
-    Customize the design and colors of your site to match your brand.
+  <Card title="Hardware guide" icon="microchip" href="/hardware/components">
+    Components list, pinouts, and wiring diagrams
   </Card>
-    <Card
-    title="Set up navigation"
-    icon="map"
-    href="/essentials/navigation"
-  >
-    Organize your docs to help users find what they need and succeed with your product.
+  <Card title="Games" icon="gamepad" href="/games/overview">
+    Explore all five built-in games and how they work
   </Card>
-  <Card
-    title="API documentation"
-    icon="terminal"
-    href="/api-reference/introduction"
-  >
-    Auto-generate API documentation from OpenAPI specifications.
+  <Card title="Firmware architecture" icon="code" href="/firmware/architecture">
+    Understand the game loop, state machine, and rendering
   </Card>
-</Columns>
+</CardGroup>
 
-## Create beautiful pages
+## What you'll build
 
-Everything you need to create world-class documentation.
+The console uses an **ESP32-C3** microcontroller, a **1.3-inch SH1106 OLED display**, and a **single analog 5-key button module** — just three components connected with jumper wires.
 
-<Columns cols={2}>
-  <Card
-    title="Write with MDX"
-    icon="pen-fancy"
-    href="/essentials/markdown"
-  >
-    Use MDX to style your docs pages.
-  </Card>
-  <Card
-    title="Code samples"
-    icon="code"
-    href="/essentials/code"
-  >
-    Add sample code to demonstrate how to use your product.
-  </Card>
-  <Card
-    title="Images"
-    icon="image"
-    href="/essentials/images"
-  >
-    Display images and other media.
-  </Card>
-  <Card
-    title="Reusable snippets"
-    icon="recycle"
-    href="/essentials/reusable-snippets"
-  >
-    Write once and reuse across your docs.
-  </Card>
-</Columns>
+<Steps>
+  <Step title="Gather the hardware">
+    You need an ESP32-C3 dev board, a 1.3-inch SH1106 OLED, and an analog 5-key button module. See the [components guide](/hardware/components) for exact parts.
+  </Step>
+  <Step title="Wire everything up">
+    Connect the OLED via I2C (SDA → GPIO 8, SCL → GPIO 9) and the button module to GPIO 0. Full wiring details in the [wiring guide](/hardware/wiring).
+  </Step>
+  <Step title="Flash the firmware">
+    Install Arduino IDE, add the ESP32-C3 board support package, install the U8g2 library, and upload `CMF_GAME.ino`. Step-by-step in the [firmware setup guide](/firmware/setup).
+  </Step>
+  <Step title="Play">
+    Use the analog button to navigate the menu and launch any of the four built-in games. See [controls](/games/controls) for the button mappings.
+  </Step>
+</Steps>
 
-## Need inspiration?
+## Key features
 
-<Card
-  title="See complete examples"
-  icon="stars"
-  href="https://mintlify.com/customers"
->
-  Browse our showcase of exceptional documentation sites.
-</Card>
+- **Four playable games** — Snake, Pong, Dodge, and a DOOM-style micro FPS (Battleship in progress)
+- **Raycasting renderer** — a DOOM-inspired 3D perspective on a 128×64 pixel display
+- **Minimal hardware** — three components, no PCB required
+- **Single-file firmware** — all game logic in one readable `CMF_GAME.ino` file
+- **MIT licensed** — free to modify, extend, and share
+
+<Note>
+  This project is designed for makers and students learning embedded systems. The firmware is intentionally simple and well-commented to serve as a learning resource.
+</Note>

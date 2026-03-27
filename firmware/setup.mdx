@@ -1,0 +1,79 @@
+---
+title: 'Firmware setup'
+description: 'Install Arduino IDE, configure board settings, and upload CMF_GAME.ino'
+---
+
+<Steps>
+  <Step title="Install Arduino IDE">
+    Download and install the latest Arduino IDE from [arduino.cc](https://www.arduino.cc/en/software).
+  </Step>
+
+  <Step title="Add ESP32-C3 board support">
+    1. Open **File → Preferences**.
+    2. Paste the following URL into the **Additional Board Manager URLs** field:
+
+    ```text
+    https://raw.githubusercontent.com/espressif/arduino-esp32/gh-pages/package_esp32_index.json
+    ```
+
+    3. Open **Tools → Board → Boards Manager**, search for `esp32`, and install **esp32 by Espressif Systems**.
+  </Step>
+
+  <Step title="Install the U8g2 library">
+    1. Open **Tools → Manage Libraries**.
+    2. Search for `U8g2`.
+    3. Install **U8g2 by oliver**.
+  </Step>
+
+  <Step title="Open CMF_GAME.ino">
+    Clone the repository or download the source archive, then open the sketch in Arduino IDE:
+
+    ```text
+    DIY Gaming Console/code/CMF_GAME.ino
+    ```
+  </Step>
+
+  <Step title="Configure board settings">
+    Set the following options under the **Tools** menu:
+
+    | Setting | Value |
+    |---------|-------|
+    | Board | **ESP32 Arduino → ESP32C3 Dev Module** |
+    | USB CDC On Boot | **Enabled** |
+    | Port | your device's COM port |
+
+    Enabling **USB CDC On Boot** gives you serial monitor access over USB without a separate UART adapter.
+  </Step>
+
+  <Step title="(Optional) Configure the display driver">
+    The firmware defaults to the SH1106 controller. If your OLED module uses an SSD1306 controller, swap the constructor at the top of `CMF_GAME.ino`:
+
+    ```cpp
+    // For SH1106 (default):
+    U8G2_SH1106_128X64_NONAME_F_HW_I2C u8g2(U8G2_R0, U8X8_PIN_NONE);
+
+    // For SSD1306, comment the line above and uncomment this one:
+    // U8G2_SSD1306_128X64_NONAME_F_HW_I2C u8g2(U8G2_R0, U8X8_PIN_NONE);
+    ```
+
+    Check your module's datasheet or silkscreen to identify the controller chip. Most generic 1.3" OLEDs use SH1106; most 0.96" OLEDs use SSD1306.
+  </Step>
+
+  <Step title="Upload the firmware">
+    Click the **Upload** button (right-arrow icon) in Arduino IDE. Wait for the status bar to show **Done uploading**.
+
+    On first boot you will see the boot animation:
+
+    1. A dot pulses outward and back at the centre of the display.
+    2. A border appears with the title **MINI GAMES**.
+    3. The main game menu loads automatically.
+  </Step>
+</Steps>
+
+<Tip>
+  If the display stays blank after uploading, double-check the I²C wiring. The firmware initialises the bus on GPIO 8 (SDA) and GPIO 9 (SCL) via `Wire.begin(8, 9)`. Confirm your OLED's SDA and SCL lines connect to those pins.
+</Tip>
+
+<Note>
+  The main loop runs with a fixed `delay(90)` at the end of every frame, giving an effective frame rate of roughly 11 FPS. This is intentional — it keeps CPU load low and input polling consistent across all games. Pressing SW5 (RESET) at any point returns to the main menu.
+</Note>

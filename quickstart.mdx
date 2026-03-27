@@ -1,80 +1,89 @@
 ---
-title: "Quickstart"
-description: "Start building awesome documentation in minutes"
+title: Quickstart
+description: Wire up the hardware, install dependencies, and get the DIY Gaming Console running in six steps.
 ---
 
-## Get started in three steps
+This guide walks you from an empty workbench to a working console. The whole process takes about 20–30 minutes.
 
-Get your documentation site running locally and make your first customization.
+<Steps>
+  <Step title="Gather the hardware">
+    Make sure you have all five components before you start:
 
-### Step 1: Set up your local environment
+    | Component | Notes |
+    |-----------|-------|
+    | ESP32-C3 Development Board | Any standard ESP32-C3 DevKit |
+    | 1.3-inch OLED Display (SH1106, 128×64) | I2C interface |
+    | Analog 5-Key Button Module | Single-wire analog output |
+    | USB-C Cable | For programming and power |
+    | Jumper Wires | Male-to-female for breadboard connections |
 
-<AccordionGroup>
-  <Accordion icon="copy" title="Clone your docs locally">
-    During the onboarding process, you created a GitHub repository with your docs content if you didn't already have one. You can find a link to this repository in your [dashboard](https://dashboard.mintlify.com).
-    
-    To clone the repository locally so that you can make and preview changes to your docs, follow the [Cloning a repository](https://docs.github.com/en/repositories/creating-and-managing-repositories/cloning-a-repository) guide in the GitHub docs.
-  </Accordion>
-  <Accordion icon="rectangle-terminal" title="Start the preview server">
-    1. Install the Mintlify CLI: `npm i -g mint`
-    2. Navigate to your docs directory and run: `mint dev`
-    3. Open `http://localhost:3000` to see your docs live!
-    
-    <Tip>Your preview updates automatically as you edit files.</Tip>
-  </Accordion>
-</AccordionGroup>
+    <Note>
+      The firmware defaults to the **SH1106** driver. If you have an SSD1306 display instead, you will swap one line in Step 5 — both displays are fully supported.
+    </Note>
+  </Step>
 
-### Step 2: Deploy your changes
+  <Step title="Install Arduino IDE">
+    1. Download and install the latest **Arduino IDE** from [arduino.cc](https://www.arduino.cc/en/software).
+    2. Open the IDE, go to **Tools → Board → Boards Manager**.
+    3. Search for `ESP32` and install the **ESP32 by Espressif Systems** package.
+    4. Once installed, go to **Tools → Board** and select **ESP32C3 Dev Module** (or the closest match for your ESP32-C3 board).
+  </Step>
 
-<AccordionGroup>
-  <Accordion icon="github" title="Install our GitHub app">
-    Install the Mintlify GitHub app from your [dashboard](https://dashboard.mintlify.com/settings/organization/github-app).
-    
-    Our GitHub app automatically deploys your changes to your docs site, so you don't need to manage deployments yourself.
-</Accordion>
-<Accordion icon="palette" title="Update your site name and colors">
-    For a first change, let's update the name and colors of your docs site.
+  <Step title="Install the U8g2 library">
+    The firmware uses U8g2 for all OLED rendering.
 
-    1. Open `docs.json` in your editor.
-    2. Change the `"name"` field to your project name.
-    3. Update the `"colors"` to match your brand.
-    4. Save and see your changes instantly at `http://localhost:3000`.
+    1. In Arduino IDE, go to **Tools → Manage Libraries**.
+    2. Search for `U8g2`.
+    3. Install **U8g2 by oliver**.
 
-    <Tip>Try changing the primary color to see an immediate difference!</Tip>
-  </Accordion>
-</AccordionGroup>
+    <Warning>
+      Do not install "U8glib" — that is an older, incompatible library. Make sure the author shown is **oliver**.
+    </Warning>
+  </Step>
 
-### Step 3: Go live
+  <Step title="Wire the hardware">
+    Connect the three components to the ESP32-C3 using jumper wires:
 
-<Accordion icon="rocket" title="Publish your docs">
-  1. Commit and push your changes.
-  2. Your docs will update and be live in moments!
-</Accordion>
+    | Component | Pin | ESP32-C3 GPIO |
+    |-----------|-----|---------------|
+    | OLED | SDA | GPIO 8 |
+    | OLED | SCL | GPIO 9 |
+    | OLED | VCC | 3.3V |
+    | OLED | GND | GND |
+    | Button Module | SIG | GPIO 0 (ADC) |
+    | Button Module | VCC | 3.3V |
+    | Button Module | GND | GND |
 
-## Next steps
+    For a full schematic and wiring diagram, see [Hardware & Wiring](/hardware/wiring).
+  </Step>
 
-Now that you have your docs running, explore these key features:
+  <Step title="Open and configure the firmware">
+    Open `code/CMF_GAME.ino` in Arduino IDE.
 
-<CardGroup cols={2}>
+    At the top of the file, the OLED driver is configured here:
 
-<Card title="Write Content" icon="pen-to-square" href="/essentials/markdown">
-  Learn MDX syntax and start writing your documentation.
-</Card>
+    ```cpp
+    U8G2_SH1106_128X64_NONAME_F_HW_I2C u8g2(U8G2_R0, U8X8_PIN_NONE);
+    // If SSD1306, use below instead
+    // U8G2_SSD1306_128X64_NONAME_F_HW_I2C u8g2(U8G2_R0, U8X8_PIN_NONE);
+    ```
 
-<Card title="Customize style" icon="palette" href="/essentials/settings">
-  Make your docs match your brand perfectly.
-</Card>
+    - **SH1106 display (default):** no changes needed — the first line is already active.
+    - **SSD1306 display:** comment out the first line and uncomment the second line.
 
-<Card title="Add code examples" icon="square-code" href="/essentials/code">
-  Include syntax-highlighted code blocks.
-</Card>
+    No other configuration is required for a standard build.
+  </Step>
 
-<Card title="API documentation" icon="code" href="/api-reference/introduction">
-  Auto-generate API docs from OpenAPI specs.
-</Card>
+  <Step title="Upload to the board">
+    1. Connect your ESP32-C3 to your computer via the USB-C cable.
+    2. In Arduino IDE, go to **Tools → Port** and select the COM port for your board.
+    3. Click the **Upload** button (right-arrow icon).
+    4. Wait for the compile and upload to complete.
 
-</CardGroup>
+    Once uploaded, the console boots with a pulsing dot animation, then displays the **MINI GAMES** title screen and the game selection menu.
 
-<Note>
-  **Need help?** See our [full documentation](https://mintlify.com/docs) or join our [community](https://mintlify.com/community).
-</Note>
+    <Tip>
+      Press **SW5** (the RESET button) from within any game to exit back to the main menu.
+    </Tip>
+  </Step>
+</Steps>

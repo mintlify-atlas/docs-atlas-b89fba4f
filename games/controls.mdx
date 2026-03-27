@@ -1,0 +1,96 @@
+---
+title: 'Controls'
+description: 'Button mappings for the menu and all games'
+---
+
+The DIY Gaming Console uses an analog 5-key button module. All five buttons share a single GPIO pin (GPIO 0, used as ADC input). Each button connects through a different resistor value, producing a distinct voltage that the firmware reads to identify which button was pressed.
+
+## Button layout
+
+The module has five directional keys arranged in a cross pattern:
+
+- **LEFT** — far left
+- **RIGHT** — far right
+- **UP** — top center
+- **DOWN** — bottom center
+- **SW5** — center button (used for select, confirm, and fire)
+
+## Universal controls
+
+| Button | Action |
+|--------|--------|
+| UP | Navigate up / Move up / Move forward |
+| DOWN | Navigate down / Move down / Move backward |
+| LEFT | Navigate left / Move left / Rotate left |
+| RIGHT | Navigate right / Move right / Rotate right |
+| SW5 (RESET) tap | Select / Confirm |
+| SW5 (RESET) any press | Exit to main menu (from any game) |
+
+## Per-game controls
+
+<Tabs>
+  <Tab title="Menu">
+    | Button | Action |
+    |--------|--------|
+    | UP | Move cursor up |
+    | DOWN | Move cursor down |
+    | SW5 tap | Launch selected game |
+  </Tab>
+  <Tab title="Snake">
+    | Button | Action |
+    |--------|--------|
+    | UP | Change direction to up |
+    | DOWN | Change direction to down |
+    | LEFT | Change direction to left |
+    | RIGHT | Change direction to right |
+
+    You cannot reverse into the direction you are already moving. For example, if the snake is moving right, pressing LEFT has no effect.
+  </Tab>
+  <Tab title="Pong">
+    | Button | Action |
+    |--------|--------|
+    | LEFT | Move paddle left |
+    | RIGHT | Move paddle right |
+
+    UP and DOWN are not used in Pong. The ball bounces automatically.
+  </Tab>
+  <Tab title="Dodge">
+    | Button | Action |
+    |--------|--------|
+    | LEFT | Move paddle left |
+    | RIGHT | Move paddle right |
+
+    The falling block moves automatically. Your goal is to avoid it by repositioning your paddle.
+  </Tab>
+  <Tab title="DOOM">
+    | Button | Action |
+    |--------|--------|
+    | LEFT | Rotate player left (−0.08 rad/frame) |
+    | RIGHT | Rotate player right (+0.08 rad/frame) |
+    | UP | Move forward (+0.1 units/frame) |
+    | DOWN | Move backward (−0.1 units/frame) |
+    | SW5 (RESET) | Exit to main menu |
+
+    <Note>
+      The DOOM game defines a shoot mechanic triggered by a short SW5 press, but the global RESET handler in `loop()` intercepts all RESET presses before the DOOM-specific code runs, so pressing SW5 exits immediately rather than firing.
+    </Note>
+  </Tab>
+</Tabs>
+
+## How the analog button works
+
+All five buttons are wired to GPIO 0 through separate resistors. When a button is pressed it pulls the ADC pin to a specific voltage level. The firmware reads a 12-bit ADC value (0–4095) and maps voltage ranges to button identities:
+
+```cpp
+Button readButton() {
+  int v = analogRead(BTN_ADC);  // 12-bit ADC, 0-4095
+  if (v >= 0    && v <= 200)  return LEFT;
+  if (v >= 600  && v <= 800)  return UP;
+  if (v >= 1300 && v <= 1600) return DOWN;
+  if (v >= 2000 && v <= 2400) return RIGHT;
+  if (v >= 3200 && v <= 3500) return RESET;
+  return NONE;
+}
+```
+
+`BTN_ADC` is defined as GPIO 0. When no button is pressed the pin floats above 3500, so `readButton()` returns `NONE`. The function is polled once per frame (every ~90 ms).

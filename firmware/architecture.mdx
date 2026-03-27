@@ -1,0 +1,229 @@
+---
+title: 'Firmware architecture'
+description: 'How the game loop, state machine, input system, and rendering work'
+---
+
+## Overview
+
+`CMF_GAME.ino` is a single-file C++ sketch for the Arduino (ESP32-C3) platform. All game logic, rendering, and input handling live in this one file. The firmware is built around three main systems:
+
+- **State machine** — tracks which screen or game is active
+- **Input system** — reads five buttons from a single analog pin
+- **Rendering** — drives a 128×64 monochrome OLED via the U8g2 library
+
+## State machine
+
+Every possible screen is represented by a value in the `AppState` enum:
+
+```cpp
+enum AppState { BOOT, MENU, SNAKE, PONG, DODGE, DOOM, BATTLESHIP };
+AppState state = BOOT;
+```
+
+| State | Description |
+|-------|-------------|
+| `BOOT` | Displays the boot animation on startup. Never returned to after `setup()` completes. |
+| `MENU` | The game-selection screen. Navigate with UP/DOWN; select with RESET. |
+| `SNAKE` | Classic snake game. |
+| `PONG` | Single-player pong (paddle vs. bouncing ball). |
+| `DODGE` | Dodge falling blocks. |
+| `DOOM` | Mini first-person shooter with raycasting. |
+| `BATTLESHIP` | Globals present in the source but not yet wired into the menu. |
+
+Transitions are triggered either by the menu (selecting a game) or by in-game events (collision, game over). Pressing RESET from any game returns to `MENU` immediately — this is enforced at the top of `loop()` before the `switch` dispatch:
+
+```cpp
+if (readButton() == RESET) {
+  state = MENU;
+  delay(250);
+}
+```
+
+<Note>
+  The DOOM game includes its own RESET handling inside `doomUpdate()`: a short press is intended to fire the weapon and a 3-second hold is intended to exit. However, because the global RESET check at the top of `loop()` runs first and calls `readButton()` independently, any press of the RESET button will immediately return to the menu before `doomUpdate()` even executes. In practice, the DOOM-specific exit mechanic is superseded by the global handler.
+</Note>
+
+## Game loop
+
+The `loop()` function follows a strict **clear → update → draw → send** pattern:
+
+```cpp
+void loop() {
+  if (readButton() == RESET) {
+    state = MENU;
+    delay(250);
+  }
+  u8g2.clearBuffer();
+  switch (state) {
+    case MENU:   menuUpdate(); menuDraw(); break;
+    case SNAKE:  snakeUpdate(); snakeDraw(); break;
+    case PONG:   pongUpdate(); pongDraw(); break;
+    case DODGE:  dodgeUpdate(); dodgeDraw(); break;
+    case DOOM:   doomUpdate(); doomDraw(); break;
+    default: break;
+  }
+  u8g2.sendBuffer();
+  delay(90);
+}
+```
+
+Key characteristics:
+
+- **~11 FPS** — the `delay(90)` at the end of every frame caps the frame rate. This keeps timing predictable across all games without needing a timer interrupt.
+- **Separation of logic and rendering** — every game has a dedicated `*Update()` function for game logic and a `*Draw()` function for rendering. Neither calls `clearBuffer()` or `sendBuffer()` directly; the loop manages those.
+- **Single draw buffer** — U8g2 operates in full-buffer mode (`F` in the constructor name), so all drawing is done in RAM and flushed to the display in one transfer.
+
+## Input system
+
+All five buttons connect to a single analog GPIO pin through a resistor ladder. Different resistor values produce distinct voltage levels that the firmware maps to button identities:
+
+```cpp
+#define BTN_ADC 0
+enum Button { NONE, LEFT, UP, DOWN, RIGHT, RESET };
+
+Button readButton() {
+  int v = analogRead(BTN_ADC);
+
+  if (v >= 0    && v <= 200)  return LEFT;
+  if (v >= 600  && v <= 800)  return UP;
+  if (v >= 1300 && v <= 1600) return DOWN;
+  if (v >= 2000 && v <= 2400) return RIGHT;
+  if (v >= 3200 && v <= 3500) return RESET;
+
+  return NONE;
+}
+```
+
+The ADC is configured for 12-bit resolution (`analogReadResolution(12)`) with 11 dB attenuation (`analogSetAttenuation(ADC_11db)`), giving a full-scale range of 0–4095 across 0–3.3 V. Each button pulls the ADC pin to a different voltage through its resistor, so only one GPIO pin is needed for the entire button matrix.
+
+<Tip>
+  If a button is registering the wrong action or no action, the most likely cause is a resistor value out of tolerance. Measure the voltage on GPIO 0 while holding each button and compare against the ranges in `readButton()`.
+</Tip>
+
+## Rendering
+
+The display is a 128×64 pixel monochrome OLED connected over I²C. U8g2 is initialised in hardware I²C mode with the SH1106 controller (swappable to SSD1306 — see [firmware setup](/firmware/setup)):
+
+```cpp
+U8G2_SH1106_128X64_NONAME_F_HW_I2C u8g2(U8G2_R0, U8X8_PIN_NONE);
+```
+
+### Display constants
+
+```cpp
+#define CELL   4          // grid cell size in pixels (used by Snake)
+#define OFFSET 2          // 2 px inset from display edge for the play-area border
+#define PLAY_W (128 - 4)  // 124 px wide play area
+#define PLAY_H (64  - 4)  //  60 px tall play area
+```
+
+All games draw a 1 px border frame at `(OFFSET, OFFSET)` with dimensions `(PLAY_W, PLAY_H)`. The 2 px `OFFSET` on each side accounts for the frame stroke width, keeping content visually inside the border.
+
+Snake uses `CELL = 4` to convert grid coordinates to pixel positions:
+
+```cpp
+// pixel position of grid cell (gx, gy)
+int px = OFFSET + gx * CELL;
+int py = OFFSET + gy * CELL;
+```
+
+### DOOM raycasting
+
+Mini DOOM renders walls using a simple DDA-style raycaster. For each of 64 vertical screen columns, a ray is stepped through the 8×8 tile map until it hits a wall. The wall slice height is inversely proportional to the ray distance:
+
+```cpp
+// Raycasting for walls
+for (int x = 0; x < 64; x++) {
+  float rayA = doomA - 0.5 + (x / 64.0);
+  float dist = 0;
+  bool hit = false;
+  while (!hit && dist < 8) {
+    dist += 0.05;
+    int rx = (int)(doomX + cos(rayA) * dist);
+    int ry = (int)(doomY + sin(rayA) * dist);
+    if (doomMap[ry][rx]) hit = true;
+  }
+  int h = 40 / (dist + 0.1);
+  if (h > 60) h = 60;
+  u8g2.drawVLine(OFFSET + x * 2, 32 - h / 2, h);
+}
+```
+
+Each column occupies 2 pixels on screen (64 columns × 2 = 128 px wide). Enemies are projected onto the screen using `atan2` and rendered as vertical line segments scaled by distance.
+
+## Animation utilities
+
+Shared visual effects live in the `Animation` namespace:
+
+```cpp
+namespace Animation {
+  void flashBorder(int times = 2) { ... }
+  void drawSnakeSegment(int x, int y, bool head) { ... }
+}
+```
+
+- **`flashBorder(times)`** — rapidly draws and clears the play-area border `times` times. Used as a game-over flash by Snake and Dodge before resetting.
+- **`drawSnakeSegment(x, y, head)`** — draws a filled box (`drawBox`) for the snake's head and an outline box (`drawFrame`) for body segments, both sized to `CELL × CELL`.
+
+## Adding a new game
+
+<AccordionGroup>
+  <Accordion title="1. Add a value to AppState">
+    Open `CMF_GAME.ino` and extend the enum:
+
+    ```cpp
+    enum AppState { BOOT, MENU, SNAKE, PONG, DODGE, DOOM, BATTLESHIP, MYGAME };
+    ```
+  </Accordion>
+
+  <Accordion title="2. Write Reset, Update, and Draw functions">
+    Follow the same naming convention as the existing games:
+
+    ```cpp
+    void myGameReset() {
+      // initialise all game state
+    }
+
+    void myGameUpdate() {
+      Button b = readButton();
+      // handle input and update game logic
+      // set state = MENU on game over
+    }
+
+    void myGameDraw() {
+      u8g2.drawFrame(OFFSET, OFFSET, PLAY_W, PLAY_H);
+      // draw all game objects
+    }
+    ```
+  </Accordion>
+
+  <Accordion title="3. Add a case to loop()">
+    ```cpp
+    case MYGAME:
+      myGameUpdate();
+      myGameDraw();
+      break;
+    ```
+  </Accordion>
+
+  <Accordion title="4. Add a menu entry">
+    Add the display name to `menuItems[]` and update the selection logic in `menuUpdate()`:
+
+    ```cpp
+    const char* menuItems[] = { "SNAKE", "PONG", "DODGE", "DOOM", "MYGAME" };
+    ```
+
+    In `menuUpdate()`, increase the DOWN boundary check and add the new state transition:
+
+    ```cpp
+    if (b == DOWN && menuIndex < 4) menuIndex++;
+    // ...
+    if (menuIndex == 4) {
+      myGameReset();
+      state = MYGAME;
+    }
+    ```
+
+    Also call `myGameReset()` at the end of `setup()` so the game state is initialised before it is first selected.
+  </Accordion>
+</AccordionGroup>

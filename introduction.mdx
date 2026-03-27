@@ -1,0 +1,61 @@
+---
+title: Introduction
+description: An open-source ESP32-C3 pocket gaming console for makers, students, and DIY electronics enthusiasts.
+---
+
+The **DIY Gaming Console** is a fully open-source, beginner-friendly pocket console built around the ESP32-C3 microcontroller. It runs five built-in mini-games on a compact 1.3-inch OLED display, controlled by a single analog 5-key button module — all wired together with minimal hardware.
+
+Designed for **makers, students, and DIY electronics enthusiasts**, the project demonstrates how to build a complete embedded system from scratch. The firmware is clean and minimal, making it a solid foundation for learning embedded game development.
+
+## What's Included
+
+The console includes four fully playable games and one work-in-progress:
+
+| Game | Status | Description |
+|------|--------|-------------|
+| **Snake** | Playable | Classic grid-based snake with food collection |
+| **Pong** | Playable | Single-player paddle-and-ball game |
+| **Dodge** | Playable | Dodge falling blocks for as long as possible |
+| **DOOM-style Micro FPS** | Playable | A raycasting first-person shooter with enemies on an 8×8 map |
+| **Battleship (Micro)** | In progress | Data structures defined; gameplay not yet implemented |
+
+## Hardware Overview
+
+The console requires only three core components:
+
+- **ESP32-C3 Development Board** — the microcontroller running all game logic at the heart of the build
+- **1.3-inch SH1106 OLED Display (128×64)** — a sharp monochrome screen connected over I2C (SDA → GPIO 8, SCL → GPIO 9)
+- **Analog 5-Key Button Module** — all five buttons share a single ADC pin (GPIO 0), each producing a distinct analog voltage level
+
+Power is supplied via a **USB-C cable**, and components are connected with **jumper wires** — no soldering required for a breadboard prototype.
+
+## Firmware at a Glance
+
+The entire firmware lives in a **single C++ file**: `CMF_GAME.ino`. Key facts:
+
+- Written in **C++ for Arduino IDE** — no custom build system needed
+- Uses the **U8g2 library** (by oliver) for all OLED rendering
+- Compatible with both **SH1106** and **SSD1306** displays via a one-line swap
+- All five games, the boot animation, the menu system, and the input driver are contained in one file (~527 lines)
+- Pressing SW5 (RESET) from within any game returns immediately to the main menu
+
+## Get Started
+
+<CardGroup cols={2}>
+  <Card title="Quickstart" icon="rocket" href="/quickstart">
+    Wire up the hardware, install dependencies, and upload your first build in minutes.
+  </Card>
+  <Card title="Hardware & Components" icon="microchip" href="/hardware/components">
+    Full component list, pin connections, and wiring diagram.
+  </Card>
+  <Card title="Games Overview" icon="gamepad" href="/games/overview">
+    Controls and gameplay details for all five included games.
+  </Card>
+  <Card title="Firmware Architecture" icon="code" href="/firmware/architecture">
+    How the single-file firmware is structured: state machine, input system, and rendering loop.
+  </Card>
+</CardGroup>
+
+## License
+
+This project is released under the **MIT License**. You are free to use, modify, and distribute it for personal or commercial projects.

@@ -1,0 +1,62 @@
+---
+title: "Components"
+description: "Everything you need to build the DIY Gaming Console"
+---
+
+This page lists every component required to build the DIY Gaming Console and explains the role each one plays in the design.
+
+## Required components
+
+| Component | Purpose |
+|---|---|
+| ESP32-C3 Development Board | Main microcontroller |
+| 1.3-inch OLED Display (SH1106, 128×64 pixels) | Monochrome display |
+| Analog 5-Key Button Module | Single analog signal, 5 directional keys |
+| USB-C Cable | Programming and power |
+| Jumper Wires | Connecting components |
+
+## ESP32-C3
+
+The ESP32-C3 is a RISC-V based microcontroller from Espressif. It combines low power consumption with built-in USB support and enough GPIO pins to drive both the OLED display over I2C and the button module over a single ADC pin — making it well suited for a compact gaming console.
+
+Any ESP32-C3 development board works. The firmware does not rely on a specific board layout beyond the two I2C pins (GPIO 8 and GPIO 9) and the ADC pin (GPIO 0).
+
+## SH1106 OLED display
+
+The console uses a 1.3-inch SH1106 OLED with a 128×64 pixel monochrome panel driven over I2C. The U8g2 library handles all rendering, and the firmware initialises the display with the `U8G2_SH1106_128X64_NONAME_F_HW_I2C` driver.
+
+<Note>
+  The SH1106 and SSD1306 are pin-compatible. If your display uses SSD1306, simply comment out the SH1106 line and uncomment the SSD1306 line in `CMF_GAME.ino`.
+
+  ```cpp
+  // SH1106 (default)
+  U8G2_SH1106_128X64_NONAME_F_HW_I2C u8g2(U8G2_R0, U8X8_PIN_NONE);
+
+  // SSD1306 — uncomment this and comment the line above if your display uses SSD1306
+  // U8G2_SSD1306_128X64_NONAME_F_HW_I2C u8g2(U8G2_R0, U8X8_PIN_NONE);
+  ```
+</Note>
+
+## Analog 5-key button module
+
+The button module provides five directional inputs (LEFT, UP, DOWN, RIGHT, and a select/reset button) over a single analog pin. Each button connects through a different resistor value, producing a distinct voltage at the analog input when pressed. The firmware reads that voltage and maps it to the corresponding button.
+
+The ADC is configured for 12-bit resolution with 11 dB attenuation, giving a full-scale range of 0–4095. The thresholds used in the firmware are:
+
+```cpp
+#define BTN_ADC 0
+
+enum Button { NONE, LEFT, UP, DOWN, RIGHT, RESET };
+
+Button readButton() {
+  int v = analogRead(BTN_ADC);
+  if (v >= 0    && v <= 200)  return LEFT;
+  if (v >= 600  && v <= 800)  return UP;
+  if (v >= 1300 && v <= 1600) return DOWN;
+  if (v >= 2000 && v <= 2400) return RIGHT;
+  if (v >= 3200 && v <= 3500) return RESET;
+  return NONE;
+}
+```
+
+When no button is pressed the analog pin floats above the highest threshold and `readButton()` returns `NONE`.

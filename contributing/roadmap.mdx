@@ -1,0 +1,69 @@
+---
+title: "Roadmap"
+description: "Planned features and future improvements for the DIY Gaming Console"
+---
+
+The DIY Gaming Console is a minimal, open-source platform intentionally kept simple so it's easy to understand and extend. The features below represent the most promising directions for future development.
+
+## Planned features
+
+<CardGroup cols={2}>
+  <Card title="Sound support" icon="volume-high">
+    Add audio output via a passive piezo buzzer or an I2S DAC for in-game sounds and music.
+  </Card>
+  <Card title="Multiplayer via ESP-NOW" icon="tower-broadcast">
+    Use the ESP32's built-in ESP-NOW protocol for local wireless multiplayer between two consoles.
+  </Card>
+  <Card title="3D-printed case" icon="cube">
+    Design a custom enclosure that houses the ESP32-C3, OLED, and button module in a handheld form factor.
+  </Card>
+  <Card title="SD card support" icon="sd-card">
+    Connect an SPI SD card module to load additional games or assets without reflashing the firmware.
+  </Card>
+</CardGroup>
+
+### Sound support
+
+The ESP32-C3 has a hardware LEDC peripheral that can generate PWM signals at audio frequencies, making it suitable for driving a passive piezo buzzer directly from a GPIO pin. For higher-quality audio — music or sampled effects — an I2S DAC (such as the MAX98357A) can be wired over the I2S bus and driven with the ESP-IDF or Arduino I2S library.
+
+Practical starting point: add a buzzer on a spare GPIO and use `ledcWriteTone()` to play notes on game events (food eaten in Snake, ball bounce in Pong, gunshot in DOOM).
+
+### Multiplayer via ESP-NOW
+
+ESP-NOW is a connectionless peer-to-peer protocol built into the ESP32 Wi-Fi stack. It requires no router or access point and has latency in the single-digit milliseconds, making it well-suited for a handheld console. Two consoles can exchange small state packets (player position, button input) at the game loop rate without noticeable lag.
+
+Both devices need each other's MAC address at compile time or exchanged via a pairing handshake at startup. The `esp_now_send()` and `esp_now_register_recv_cb()` APIs in the Arduino ESP32 core are the entry points.
+
+### SD card support
+
+A standard SPI-connected SD card module uses four GPIO lines (MISO, MOSI, SCK, CS). The Arduino `SD.h` library works with the ESP32 and can read files from the card's filesystem. One approach is to store game configuration or level data as binary files and load them at runtime; another is to store additional `.ino`-compiled binaries and boot into them via OTA or a custom bootloader, though the latter is considerably more complex.
+
+### 3D-printed case
+
+A case design would need to account for:
+
+- A window for the 1.3-inch OLED (approximately 26 × 14 mm visible area)
+- A cutout or recess for the analog 5-key button module
+- Access to the USB-C port for charging and flashing
+- Ventilation or a snap-fit lid for battery access if a LiPo cell is added
+
+The compact footprint of the ESP32-C3 dev board and the OLED makes a roughly credit-card-sized enclosure achievable.
+
+## Community contributions
+
+<Note>
+  This is a personal open-source project. Contributions via GitHub issues and pull requests are welcome.
+</Note>
+
+The project is released under the [MIT License](https://github.com/Rudraa-25/DIY-Gaming-Consol/blob/main/LICENSE), which allows free use, modification, and redistribution. The source code is available on GitHub:
+
+**[github.com/Rudraa-25/DIY-Gaming-Consol](https://github.com/Rudraa-25/DIY-Gaming-Consol)**
+
+Areas where contributions are especially useful:
+
+- **New games** — implement a new `AppState` entry with Reset/Update/Draw functions following the existing pattern
+- **Display improvements** — better fonts, splash screens, score tracking, or high-score persistence via NVS
+- **Hardware variants** — support for SSD1306 displays (already commented in the code), different button layouts, or alternate MCUs
+- **Bug fixes and testing** — reproduce issues on different ESP32-C3 board variants and report findings
+
+Open an issue on GitHub to discuss a feature before starting work on a large change.

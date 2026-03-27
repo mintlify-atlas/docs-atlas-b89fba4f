@@ -1,0 +1,137 @@
+---
+title: "Customizing the firmware"
+description: "How to add new games, modify existing ones, and extend the hardware"
+---
+
+The firmware in `CMF_GAME.ino` is structured around a state machine and a consistent three-function pattern (Reset, Update, Draw) for each game. This makes it straightforward to add new games or tune existing ones without touching unrelated code.
+
+## Adding a new game
+
+<Steps>
+  <Step title="Add a value to the AppState enum">
+    Open `CMF_GAME.ino` and find the `AppState` enum near line 98. Add your new state at the end:
+
+    ```cpp
+    enum AppState { BOOT, MENU, SNAKE, PONG, DODGE, DOOM, BATTLESHIP, MY_GAME };
+    ```
+  </Step>
+
+  <Step title="Add the game name to the menu array">
+    Find the `menuItems` array and append your game's display name:
+
+    ```cpp
+    const char* menuItems[] = { "SNAKE", "PONG", "DODGE", "DOOM", "MY GAME" };
+    ```
+
+    Then update the bounds check in `menuUpdate()` so the cursor can reach the new entry:
+
+    ```cpp
+    if (b == DOWN && menuIndex < 4) menuIndex++;  // was < 3
+    ```
+  </Step>
+
+  <Step title="Add a selection case in menuUpdate()">
+    Inside the `if (b == RESET)` block in `menuUpdate()`, add a case for the new index:
+
+    ```cpp
+    if (menuIndex == 4) { myGameReset(); state = MY_GAME; }
+    ```
+  </Step>
+
+  <Step title="Implement the three game functions">
+    Add your Reset, Update, and Draw functions anywhere before `setup()`:
+
+    ```cpp
+    void myGameReset() {
+      // initialize game state
+    }
+
+    void myGameUpdate() {
+      Button b = readButton();
+      // handle input and update game logic
+      // Call Animation::flashBorder() and return to MENU on game over
+    }
+
+    void myGameDraw() {
+      u8g2.drawFrame(OFFSET, OFFSET, PLAY_W, PLAY_H);
+      // render your game using u8g2 drawing functions
+    }
+    ```
+
+    <Tip>Use `Animation::flashBorder()` when a game ends — it's already implemented and gives consistent visual feedback across all games.</Tip>
+  </Step>
+
+  <Step title="Add a case to the main loop switch">
+    In the `switch (state)` block inside `loop()`, add:
+
+    ```cpp
+    case MY_GAME:
+      myGameUpdate();
+      myGameDraw();
+      break;
+    ```
+  </Step>
+</Steps>
+
+## Modifying game parameters
+
+Several `#define` constants at the top of the file control the play area and game behavior. Changing these affects all games simultaneously.
+
+```cpp
+#define CELL 4      // grid cell size in pixels — increase for larger grid cells
+#define OFFSET 2    // border offset in pixels
+#define PLAY_W (128 - 4)  // play area width
+#define PLAY_H (64 - 4)   // play area height
+#define MAX_LEN 64  // maximum snake length
+#define MAX_ENEMIES 3  // number of DOOM enemies
+```
+
+**Frame rate:** the `delay(90)` at the very end of `loop()` controls how fast the game loop runs. Lower the value to speed up all games; raise it to slow them down. At 90 ms the loop runs at roughly 11 fps.
+
+<Warning>
+  `PLAY_W` and `PLAY_H` are derived from the display resolution (128×64). Increasing them beyond the display bounds will cause drawing calls to write outside the frame buffer.
+</Warning>
+
+## Modifying the DOOM map
+
+The DOOM-style level is defined as an 8×8 grid of `uint8_t` values. A `1` is a wall; a `0` is open space the player can walk through.
+
+```cpp
+const uint8_t doomMap[8][8] = {
+  {1,1,1,1,1,1,1,1},  // 1 = wall, 0 = open space
+  {1,0,0,0,0,0,0,1},
+  {1,0,1,0,1,1,0,1},
+  {1,0,1,0,0,0,0,1},
+  {1,0,0,0,1,0,0,1},
+  {1,0,1,0,0,0,0,1},
+  {1,0,0,0,0,1,0,1},
+  {1,1,1,1,1,1,1,1}
+};
+```
+
+Edit the inner cells (rows and columns 1–6) to create different room layouts. You can add internal walls to create corridors, open areas, or mazes.
+
+<Warning>
+  The outer edges (row 0, row 7, column 0, column 7) must remain `1`. The raycaster does not perform bounds checking beyond the map array; removing the outer walls will cause the ray to read out-of-bounds memory.
+</Warning>
+
+## Using U8g2 drawing functions
+
+All rendering goes through the `u8g2` object from the [U8g2 library](https://github.com/olikraus/u8g2). The project calls these functions most frequently:
+
+| Function | Description |
+|---|---|
+| `u8g2.drawFrame(x, y, w, h)` | Rectangle outline |
+| `u8g2.drawBox(x, y, w, h)` | Filled rectangle |
+| `u8g2.drawDisc(x, y, r)` | Filled circle |
+| `u8g2.drawVLine(x, y, h)` | Vertical line |
+| `u8g2.drawStr(x, y, str)` | Text string at pixel position |
+| `u8g2.setFont(font)` | Set the active font (project uses `u8g2_font_5x7_mf`) |
+| `u8g2.clearBuffer()` | Clear the frame buffer before drawing |
+| `u8g2.sendBuffer()` | Flush the frame buffer to the display |
+
+Each game frame follows the same sequence: `clearBuffer()` is called once at the top of `loop()`, all Draw functions write into the buffer, then `sendBuffer()` is called once at the bottom.
+
+<Tip>
+  The U8g2 library has many more drawing functions including triangles, ellipses, glyphs, and bitmap rendering. See the full API at [github.com/olikraus/u8g2/wiki/u8g2reference](https://github.com/olikraus/u8g2/wiki/u8g2reference).
+</Tip>

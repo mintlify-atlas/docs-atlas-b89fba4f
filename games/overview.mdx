@@ -1,0 +1,92 @@
+---
+title: 'Games overview'
+description: 'All five built-in games on the DIY Gaming Console'
+---
+
+The DIY Gaming Console firmware includes four fully playable games and one partial implementation (Battleship). All games run on the 128×64 OLED display and are accessible from the main menu.
+
+<CardGroup cols={2}>
+  <Card title="Snake" icon="worm">
+    Classic snake — eat food to grow, avoid walls.
+  </Card>
+  <Card title="Pong" icon="table-tennis-paddle-ball">
+    Bounce the ball with your paddle. Don't let it fall past.
+  </Card>
+  <Card title="Dodge" icon="shield">
+    Move your paddle left and right to dodge falling blocks.
+  </Card>
+  <Card title="Mini DOOM" icon="crosshairs">
+    DOOM-style first-person raycasting shooter with enemies.
+  </Card>
+</CardGroup>
+
+<Note>
+  All games return to the main menu automatically when you lose. Press SW5 (RESET) at any time to manually exit back to the menu.
+</Note>
+
+## Snake
+
+Snake is a grid-based game. The play area is 124×60 pixels, divided into 4×4 pixel cells (`CELL = 4`). The snake starts with a length of 5 and moves one cell per frame.
+
+- **Food:** Spawns at a random cell. Eating food increases the snake's length by one, up to a maximum of 64 segments (`MAX_LEN = 64`).
+- **Controls:** Use the four directional buttons to change direction. You cannot reverse into the direction you are already moving.
+- **Loss condition:** Hitting any wall triggers a flashing border animation, resets the snake, and returns to the main menu.
+
+## Pong
+
+Pong is a single-player ball-bounce game. The paddle sits at the bottom of the screen (`y = 56`) and is 28 pixels wide and 3 pixels tall. The ball is a 3×3 pixel square.
+
+- **Ball physics:** The ball starts at velocity `bvx = 2, bvy = 2`. It bounces off the left and right walls and the top wall.
+- **Paddle:** Move left or right with the corresponding buttons. The paddle does not wrap around the screen edges.
+- **Loss condition:** If the ball reaches `y ≥ 54` and is not over the paddle, the game immediately returns to the menu. There is no flash animation — the transition is instant.
+
+## Dodge
+
+Dodge is a single-lane avoidance game. A 6×6 pixel block falls from the top of the screen at 4 pixels per frame. The player controls a 12×4 pixel paddle at `y = 56`.
+
+- **Block spawning:** When a block reaches the bottom of the play area, it respawns at a random horizontal position (`x` between 8 and 112) and falls again.
+- **Player movement:** Move the paddle left or right at 4 pixels per step. The paddle is bounded by the play area edges.
+- **Hit detection:** Uses rectangle overlap. If the falling block overlaps the paddle's bounding box, the game triggers a two-flash border animation and returns to the menu.
+
+## Mini DOOM FPS
+
+Mini DOOM is a first-person perspective raycasting shooter inspired by id Software's DOOM. It renders a 3D view of the map on the 128×64 display using 64 rays drawn at 2 pixels wide each.
+
+**Map layout**
+
+The map is an 8×8 tile grid. `1` = wall, `0` = open floor.
+
+```cpp
+const uint8_t doomMap[8][8] = {
+  {1,1,1,1,1,1,1,1},
+  {1,0,0,0,0,0,0,1},
+  {1,0,1,0,1,1,0,1},
+  {1,0,1,0,0,0,0,1},
+  {1,0,0,0,1,0,0,1},
+  {1,0,1,0,0,0,0,1},
+  {1,0,0,0,0,1,0,1},
+  {1,1,1,1,1,1,1,1}
+};
+```
+
+The outer ring is entirely walls. The interior contains pillars and corridors that create natural cover and sightlines.
+
+**Player**
+
+- Starts at position `(3.5, 3.5)` facing angle `0` (east).
+- Turn speed: ±0.08 radians per frame.
+- Move speed: ±0.1 map units per frame.
+
+**Enemies**
+
+Three enemies spawn at random positions within the map. Each enemy is rendered as a vertical line sprite scaled by distance. Shoot an enemy by tapping SW5 when it is within approximately ±0.18 radians of your aim direction. A brief gun flash appears at the bottom of the screen on each shot.
+
+**Exiting**
+
+Press RESET (SW5) to return to the main menu. The game loop's global RESET handler runs before the DOOM-specific input code, so any press exits immediately.
+
+## Battleship (partial)
+
+Battleship is a grid-based naval combat game. The firmware defines the global state for a 4×4 board (`BS_SIZE = 4`) including arrays for ship positions (`bsShips`) and shot tracking (`bsShots`), and the `BATTLESHIP` value is present in the `AppState` enum. However, Battleship is **not yet wired into the main menu or game loop** in the current firmware — it is not selectable from the menu and has no Update or Draw functions.
+
+This makes Battleship a work-in-progress: the data structures are defined and ready, but gameplay logic has not been implemented yet. See the [roadmap](/contributing/roadmap) for future plans.

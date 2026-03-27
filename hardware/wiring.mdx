@@ -1,0 +1,56 @@
+---
+title: "Wiring guide"
+description: "Connect the ESP32-C3, OLED display, and button module"
+---
+
+Follow this guide to wire the three hardware components together before uploading the firmware. The build requires seven connections in total — four for the OLED and three for the button module.
+
+<Warning>
+  Do not connect VCC to 5V. The ESP32-C3 is a 3.3V device and both the OLED and button module should be powered from the 3.3V pin.
+</Warning>
+
+## Pin connections
+
+| Component | Pin | ESP32-C3 GPIO | Description |
+|-----------|-----|---------------|-------------|
+| OLED | SDA | GPIO 8 | I2C Data |
+| OLED | SCL | GPIO 9 | I2C Clock |
+| OLED | VCC | 3.3V | Power |
+| OLED | GND | GND | Ground |
+| Button | SIG | GPIO 0 (ADC) | Analog signal |
+| Button | VCC | 3.3V | Power |
+| Button | GND | GND | Ground |
+
+## OLED wiring
+
+The SH1106 display communicates over I2C. The firmware calls `Wire.begin(8, 9)` in `setup()`, which assigns GPIO 8 as SDA and GPIO 9 as SCL. Connect the display's SDA pin to GPIO 8 and SCL to GPIO 9.
+
+The default I2C address for most SH1106 and SSD1306 modules is `0x3C`. The U8g2 library auto-detects this address when using the `F_HW_I2C` driver variant, so no address configuration is needed in the firmware.
+
+## Button module wiring
+
+The analog 5-key button module outputs a single analog voltage on its SIG pin. Connect SIG to GPIO 0, which is an ADC-capable pin on the ESP32-C3. The firmware configures the ADC in `setup()` before any button reads occur:
+
+```cpp
+void setup() {
+  Wire.begin(8, 9);
+  u8g2.begin();
+  analogReadResolution(12);
+  analogSetAttenuation(ADC_11db);
+  randomSeed(millis());
+  // ...
+}
+```
+
+`analogReadResolution(12)` sets 12-bit resolution (0–4095) and `analogSetAttenuation(ADC_11db)` extends the measurable range to the full 3.3V rail, which is required to distinguish all five button voltage levels.
+
+## Wiring tips
+
+<Tip>
+  Keep I2C wires (SDA and SCL) as short as possible. Long runs increase capacitance and can cause signal integrity issues at higher I2C clock speeds.
+</Tip>
+
+- **Use 3.3V, not 5V.** Both the OLED and the button module must be powered from the 3.3V pin on the ESP32-C3.
+- **Check GND connections first.** A missing ground is the most common cause of a display that fails to initialise or buttons that read incorrectly.
+- **GPIO 0 boot mode caveat.** GPIO 0 on the ESP32-C3 controls boot mode — it must be floating or pulled high at reset for normal boot. The button module is safe here because an unpressed button draws no current and leaves the pin floating.
+- **Secure the jumper wires.** Loose connections to the OLED header are a frequent source of intermittent display issues. Use breadboard-friendly headers or solder the wires if the console will be handled regularly.
